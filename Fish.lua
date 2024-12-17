@@ -18,14 +18,21 @@ local other = miscellaneous:Channel("Other")
 -- Teleport Channel inside Miscellaneous (formerly Main)
 local teleport = miscellaneous:Channel("Teleport")
 
+-- NEW: Character Channel inside Miscellaneous
+local flyChannel = miscellaneous:Channel("Character")
+
+-- Debug log for channel initialization
+print("Channels initialized successfully.")
+
 -- Configuration settings
 local config = {
-    shakeSpeed = 0.1, -- How fast the shake occurs
-    autoShakeEnabled = false, -- Whether auto-shake is enabled
-    autoCastEnabled = false, -- Whether auto-cast is enabled
-    autoReelEnabled = false, -- Whether auto-reel is enabled
-    bigButtonScaleFactor = 2, -- Scale factor for making the shake button larger
-    antiAfkEnabled = false -- Whether anti-afk is enabled
+    shakeSpeed = 0.1,
+    autoShakeEnabled = false,
+    autoCastEnabled = false,
+    autoReelEnabled = false,
+    bigButtonScaleFactor = 2,
+    antiAfkEnabled = false,
+    flyEnabled = false
 }
 
 -- Services
@@ -242,15 +249,12 @@ other:Toggle("Anti-AFK", false, function(bool)
     })
 end)
 
--- Anti-AFK feature
+-- Anti-AFK feature and main loop for Auto functionalities 
 run_service.RenderStepped:Connect(function()
     if config.antiAfkEnabled then
         bb:ClickButton()
     end
-end)
 
--- Main loop for Auto-Cast, Auto-Reel, and Auto-Shake
-run_service.Heartbeat:Connect(function()
     if config.autoCastEnabled then
         autoCast()
     end
@@ -262,4 +266,132 @@ run_service.Heartbeat:Connect(function()
     if config.autoShakeEnabled then
         shake()
     end
+
 end)
+
+-- Flying Variables
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+local flying = false
+local speed = 200 -- Flying speed
+local bodyVelocity
+local bodyGyro
+local flyingAnimation
+local animationTracks = {} -- Table to store active animations
+
+-- Stop all default animations
+local function stopAllAnimations()
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+        if not animationTracks[track.Animation.AnimationId] then
+            track:Stop()
+        end
+    end
+end
+
+-- Function to play flying animation
+local function playFlyAnimation()
+    stopAllAnimations() -- Stop any conflicting animations first
+    
+    if not flyingAnimation then
+        flyingAnimation = Instance.new("Animation")
+        flyingAnimation.AnimationId = "rbxassetid://507777826" -- Replace with your flying animation ID
+        local animator = humanoid:WaitForChild("Animator")
+        flyingAnimation = animator:LoadAnimation(flyingAnimation)
+        flyingAnimation.Priority = Enum.AnimationPriority.Action -- Force priority
+    end
+
+    if not flyingAnimation.IsPlaying then
+        flyingAnimation:Play()
+        animationTracks[flyingAnimation.AnimationId] = flyingAnimation
+    end
+end
+
+-- Function to stop flying animation
+local function stopFlyAnimation()
+    if flyingAnimation and flyingAnimation.IsPlaying then
+        flyingAnimation:Stop()
+        animationTracks[flyingAnimation.AnimationId] = nil
+    end
+    stopAllAnimations() -- Restore default animations when stopping fly
+end
+
+-- Function to toggle flying
+local function toggleFly(state)
+    flying = state
+
+    if flying then
+        -- Enable flying
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bodyVelocity.Velocity = Vector3.zero
+        bodyVelocity.P = 1250
+        bodyVelocity.Parent = rootPart
+
+        bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bodyGyro.CFrame = rootPart.CFrame
+        bodyGyro.P = 3000
+        bodyGyro.Parent = rootPart
+
+        playFlyAnimation()
+    else
+        -- Disable flying
+        if bodyVelocity then bodyVelocity:Destroy() end
+        if bodyGyro then bodyGyro:Destroy() end
+        stopFlyAnimation()
+    end
+end
+
+-- Movement control
+local userInput = game:GetService("UserInputService")
+local function onMove(input, gameProcessed)
+    if gameProcessed or not flying then return end
+
+    -- Adjust velocity based on movement
+    local moveDirection = Vector3.zero
+
+    if userInput:IsKeyDown(Enum.KeyCode.W) then
+        moveDirection = moveDirection + workspace.CurrentCamera.CFrame.LookVector
+    end
+    if userInput:IsKeyDown(Enum.KeyCode.S) then
+        moveDirection = moveDirection - workspace.CurrentCamera.CFrame.LookVector
+    end
+    if userInput:IsKeyDown(Enum.KeyCode.A) then
+        moveDirection = moveDirection - workspace.CurrentCamera.CFrame.RightVector
+    end
+    if userInput:IsKeyDown(Enum.KeyCode.D) then
+        moveDirection = moveDirection + workspace.CurrentCamera.CFrame.RightVector
+    end
+    if userInput:IsKeyDown(Enum.KeyCode.Space) then
+        moveDirection = moveDirection + Vector3.new(0, 1, 0)
+    end
+    if userInput:IsKeyDown(Enum.KeyCode.LeftControl) then
+        moveDirection = moveDirection - Vector3.new(0, 1, 0)
+    end
+
+    if moveDirection.Magnitude > 0 then
+        bodyVelocity.Velocity = moveDirection.Unit * speed
+    else
+        bodyVelocity.Velocity = Vector3.zero
+    end
+end
+
+-- Update movement
+userInput.InputChanged:Connect(onMove)
+
+-- Add Toggle for Flying
+print("Initializing Fly button...")
+flyChannel:Toggle("Fly", false, function(bool)
+    toggleFly(bool)
+    print("Fly toggle state: " .. tostring(bool))
+    OrionLib:MakeNotification({
+        Name = "Fly",
+        Content = "Flying is now " .. (bool and "Enabled" or "Disabled"),
+        Image = "rbxassetid://4483345998",
+        Time = 3
+    })
+end)
+print("Fly button initialized successfully.")
