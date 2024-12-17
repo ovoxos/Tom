@@ -1,7 +1,7 @@
 local DiscordLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt"))()
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
-local win = DiscordLib:Window("Fishing Helper")
+local win = DiscordLib:Window("Skibidi Tom")
 
 -- Main Functions Channel (formerly Fishing Controls)
 local mainFunctions = win:Server("Main Functions", "http://www.roblox.com/asset/?id=6031075938")
@@ -169,7 +169,7 @@ autos:Toggle("Auto-Reel (Blatant)", false, function(bool)
 end)
 
 -- Add Teleport Dropdown and Button
-local selectedLocation = "Ancient Archive"  -- Default teleport location
+local selectedLocation = "Moosewood"  -- Default teleport location
 
 teleport:Dropdown("Select Teleport Location", {"Ancient Archive", "Ancient Isle", "Brine Pool", "Desolate Deep", "Forsaken Shore", "Keeper Altar", "Moosewood", "Mushgrove", "Roslit", "Roslit Volcano", "Snowcap Island", "Sunstone", "Terrapin", "The Depth", "Vertigo"}, function(selected)
     selectedLocation = selected
