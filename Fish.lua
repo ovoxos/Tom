@@ -2,10 +2,9 @@ local DiscordLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/da
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
 local win = DiscordLib:Window("Fishing Helper")
-
 local serv = win:Server("Fishing Controls", "")
 
--- Removed the "Buttons" channel and renamed "Toggles" to "Autos"
+-- Autos Channel
 local autos = serv:Channel("Autos")
 
 -- Configuration settings
@@ -34,66 +33,87 @@ end
 -- Function to perform the shake action
 local function shake()
     local shake_ui = playergui:FindFirstChild("shakeui")
-    if shake_ui then
-        local safezone = shake_ui:FindFirstChild("safezone")
-        local button = safezone and safezone:FindFirstChild("button")
+    if not shake_ui then
+        print("Shake UI not found!")
+        return
+    end
 
-        if button then
-            -- Scale the button if bigButtonScaleFactor is enabled
-            if config.bigButtonScaleFactor then
-                button.Size = UDim2.new(config.bigButtonScaleFactor, 0, config.bigButtonScaleFactor, 0)
-            else
-                button.Size = UDim2.new(1, 0, 1, 0)  -- Reset to default size if disabled
-            end
+    local safezone = shake_ui:FindFirstChild("safezone")
+    local button = safezone and safezone:FindFirstChild("button")
 
-            -- Simulate click to shake the button
-            if button.Visible then
-                simulateClick(
-                    button.AbsolutePosition.X + button.AbsoluteSize.X / 2,
-                    button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
-                )
-            end
+    if button then
+        -- Scale the button
+        if config.bigButtonScaleFactor then
+            button.Size = UDim2.new(config.bigButtonScaleFactor, 0, config.bigButtonScaleFactor, 0)
+        else
+            button.Size = UDim2.new(1, 0, 1, 0)  -- Default size
         end
+
+        -- Simulate click to shake the button
+        if button.Visible then
+            simulateClick(
+                button.AbsolutePosition.X + button.AbsoluteSize.X / 2,
+                button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+            )
+        end
+    else
+        print("Shake button not found!")
     end
 end
 
--- Function to perform the auto-cast action
+-- Updated Auto-Cast Function
 local function autoCast()
-    local resetEvent = game:GetService("Players").LocalPlayer:WaitForChild("reset")
-    resetEvent:FireServer()
+    local resetEvent = localplayer:FindFirstChild("reset")
+    if resetEvent then
+        resetEvent:FireServer()
+    else
+        print("Reset event not found!")
+        return
+    end
 
-    -- Delay before casting again to prevent rapid casting
-    wait(1)  -- You can adjust this wait time if necessary
+    wait(1)  -- Delay to prevent rapid casting
 
     local args = {
-        [1] = 23.5,  -- The cast distance or position
-        [2] = 1      -- The force or type of cast
+        [1] = 14.2,  -- Updated cast distance
+        [2] = 1      -- Cast force
     }
 
-    game:GetService("Players").LocalPlayer:WaitForChild("cast"):FireServer(unpack(args))
-    print("Casting rod!")
+    local castEvent = localplayer:FindFirstChild("cast")
+    if castEvent then
+        castEvent:FireServer(unpack(args))
+        print("Casting rod with distance: " .. args[1] .. " and force: " .. args[2])
+    else
+        print("Cast event not found!")
+    end
 end
 
--- Function to perform the auto-reel action
+-- Updated Auto-Reel Function
 local function autoReel()
-    -- Ensure auto-reel happens after the cast, so we only reel when appropriate
+    if not config.autoReelEnabled then
+        return  -- Exit the function if auto-reel is disabled
+    end
+
     local args = {
-        [1] = 100,  -- Reel speed or value
-        [2] = true  -- Whether to reel instantly (true for no wait)
+        [1] = 100,  -- Reel speed
+        [2] = true  -- Instant reeling
     }
 
-    game:GetService("ReplicatedStorage"):WaitForChild("events"):WaitForChild("reelfinished"):FireServer(unpack(args))
-    print("Reeling in!")
+    local reelEvent = replicated_storage:WaitForChild("events"):FindFirstChild("reelfinished")
+    if reelEvent then
+        reelEvent:FireServer(unpack(args))
+        print("Reeling in with speed: " .. args[1] .. " and instant: " .. tostring(args[2]))
+    else
+        print("Reel event not found!")
+    end
 end
 
 -- Add Toggle for Auto-Shake
 autos:Toggle("Auto-Shake", false, function(bool)
     config.autoShakeEnabled = bool
-    print("Auto-Shake is: " .. tostring(config.autoShakeEnabled))
     OrionLib:MakeNotification({
         Name = "Auto-Shake",
-        Content = config.autoShakeEnabled and "Enabled" or "Disabled",
-        Image = "rbxassetid://4483345998",  -- Replace with your preferred image if needed
+        Content = "Auto-Shake is now " .. (bool and "Enabled" or "Disabled"),
+        Image = "rbxassetid://4483345998",
         Time = 3
     })
 end)
@@ -101,10 +121,9 @@ end)
 -- Add Toggle for Auto-Cast
 autos:Toggle("Auto-Cast", false, function(bool)
     config.autoCastEnabled = bool
-    print("Auto-Cast is: " .. tostring(config.autoCastEnabled))
     OrionLib:MakeNotification({
         Name = "Auto-Cast",
-        Content = config.autoCastEnabled and "Enabled" or "Disabled",
+        Content = "Auto-Cast is now " .. (bool and "Enabled" or "Disabled"),
         Image = "rbxassetid://4483345998",
         Time = 3
     })
@@ -113,38 +132,41 @@ end)
 -- Add Toggle for Auto-Reel
 autos:Toggle("Auto-Reel", false, function(bool)
     config.autoReelEnabled = bool
-    print("Auto-Reel is: " .. tostring(config.autoReelEnabled))
     OrionLib:MakeNotification({
         Name = "Auto-Reel",
-        Content = config.autoReelEnabled and "Enabled" or "Disabled",
+        Content = "Auto-Reel is now " .. (bool and "Enabled" or "Disabled"),
         Image = "rbxassetid://4483345998",
         Time = 3
     })
 end)
 
 -- Main loop for auto-shake, auto-cast, and auto-reel
-local shakeInterval = 0  -- Track the shake interval to ensure continuous shaking
+local shakeInterval = 0
+local lastCast = 0
+local lastReel = 0
+
 run_service.Heartbeat:Connect(function()
     -- Handle auto-shake
     if config.autoShakeEnabled then
         if tick() - shakeInterval >= config.shakeSpeed then
-            shake()  -- Perform shake action
-            shakeInterval = tick()  -- Update the shake interval
+            shake()
+            shakeInterval = tick()
         end
     end
 
     -- Handle auto-cast
     if config.autoCastEnabled then
-        autoCast()  -- Perform cast action after waiting for reset
-        wait(1)   -- Add a delay to avoid rapid casting
+        if tick() - lastCast >= 1 then
+            autoCast()
+            lastCast = tick()
+        end
     end
 
     -- Handle auto-reel
     if config.autoReelEnabled then
-        if config.autoCastEnabled then
-            -- Only reel if auto-cast is enabled (to prevent reel without casting)
-            autoReel()  -- Perform reel action
-            wait(1)     -- Wait a second before next reel (adjust as needed)
+        if tick() - lastReel >= 1 then
+            autoReel()
+            lastReel = tick()
         end
     end
 end)
