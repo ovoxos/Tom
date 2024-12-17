@@ -1,7 +1,7 @@
 local DiscordLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt"))()
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
-local win = DiscordLib:Window("Skibidi Fisch")
+local win = DiscordLib:Window("Fishing Helper")
 
 -- Main Functions Channel (formerly Fishing Controls)
 local mainFunctions = win:Server("Main Functions", "http://www.roblox.com/asset/?id=6031075938")
@@ -35,6 +35,7 @@ local run_service = game:GetService("RunService")
 local replicated_storage = game:GetService("ReplicatedStorage")
 local localplayer = players.LocalPlayer
 local playergui = localplayer.PlayerGui
+local bb = game:service'VirtualUser'
 
 -- Utility function to simulate a click
 local function simulateClick(x, y)
@@ -117,14 +118,14 @@ local function autoCast()
     warn("No rod found in the character!")
 end
 
--- Auto-Reel Function
+-- Function for Auto-Reel
 local function autoReel()
     local args = {
-        [1] = 100, -- Reel speed (adjust as needed)
-        [2] = true  -- Reel direction (true for reel in, false for reel out)
+        [1] = 100,
+        [2] = true
     }
-
-    game:GetService("ReplicatedStorage"):WaitForChild("events"):WaitForChild("reelfinished"):FireServer(unpack(args))
+    replicated_storage:WaitForChild("events"):WaitForChild("reelfinished"):FireServer(unpack(args))
+    print("Reeling in!")
 end
 
 -- Add Toggle for Auto-Shake
@@ -160,76 +161,105 @@ autos:Toggle("Auto-Reel (Blatant)", false, function(bool)
     })
 end)
 
--- Add Teleport Button under "Miscellaneous" Section
+-- Add Teleport Dropdown and Button
+local selectedLocation = "Ancient Archive"  -- Default teleport location
+
+teleport:Dropdown("Select Teleport Location", {"Ancient Archive", "Ancient Isle", "Brine Pool", "Desolate Deep", "Forsaken Shore", "Keeper Altar", "Moosewood", "Mushgrove", "Roslit", "Roslit Volcano", "Snowcap Island", "Sunstone", "Terrapin", "The Depth", "Vertigo"}, function(selected)
+    selectedLocation = selected
+end)
+
 teleport:Button("Teleport", function()
-    local spawnLocation = workspace:FindFirstChild("SpawnLocation")
-    if spawnLocation then
-        localplayer.Character:SetPrimaryPartCFrame(spawnLocation.CFrame)
+    local targetPositions = {
+        ["Ancient Archive"] = Vector3.new(-3162, -745, 1701),
+        ["Ancient Isle"] = Vector3.new(6067, 200, 285),
+        ["Brine Pool"] = Vector3.new(-1793, -141, -3297),
+        ["Desolate Deep"] = Vector3.new(-1656, -211, -2848),
+        ["Forsaken Shore"] = Vector3.new(-2487, 135, 1558),
+        ["Keeper Altar"] = Vector3.new(1313, -803, -120),
+        ["Moosewood"] = Vector3.new(388, 135, 254),
+        ["Mushgrove"] = Vector3.new(2511, 134, -711),
+        ["Roslit"] = Vector3.new(-1527, 134, 621),
+        ["Roslit Volcano"] = Vector3.new(-1903, 164, 317),
+        ["Snowcap Island"] = Vector3.new(2682, 156, 2405),
+        ["Sunstone"] = Vector3.new(-922, 134, -1115),
+        ["Terrapin"] = Vector3.new(-198, 137, 1951),
+        ["The Depth"] = Vector3.new(991, -712, 1333),
+        ["Vertigo"] = Vector3.new(-107, -512, 1139)
+    }
+
+    local targetPosition = targetPositions[selectedLocation]
+    if targetPosition then
+        localplayer.Character:SetPrimaryPartCFrame(CFrame.new(targetPosition))
         OrionLib:MakeNotification({
             Name = "Teleport",
-            Content = "You have been teleported to the spawn location.",
+            Content = "Teleporting to " .. selectedLocation,
             Image = "rbxassetid://4483345998",
             Time = 3
         })
     else
-        print("Spawn location not found!")
+        OrionLib:MakeNotification({
+            Name = "Error",
+            Content = "Invalid teleport location",
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
     end
 end)
 
--- Add "Infinite Yield" Button inside "Other" Section
+-- Add Infinite Yield Button in "Other" category
 other:Button("Infinite Yield", function()
-    loadstring(game:HttpGet(('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'), true))() -- Execute Infinite Yield script
-    OrionLib:MakeNotification({
-        Name = "Infinite Yield",
-        Content = "Infinite Yield script executed.",
-        Image = "rbxassetid://4483345998",
-        Time = 3
-    })
+    -- Execute the Infinite Yield script when the button is pressed
+    local success, err = pcall(function()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source', true))()
+    end)
+    
+    -- Handle potential errors
+    if not success then
+        OrionLib:MakeNotification({
+            Name = "Error",
+            Content = "Failed to execute Infinite Yield: " .. err,
+            Image = "rbxassetid://4483345998",
+            Time = 5
+        })
+    else
+        OrionLib:MakeNotification({
+            Name = "Infinite Yield",
+            Content = "Successfully executed Infinite Yield!",
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+    end
 end)
 
--- Add Anti AFK Button in "Other"
-other:Toggle("Anti AFK", false, function(bool)
+-- Add Toggle for Anti-AFK in "Other" category
+other:Toggle("Anti-AFK", false, function(bool)
     config.antiAfkEnabled = bool
     OrionLib:MakeNotification({
-        Name = "Anti AFK",
-        Content = "Anti AFK is now " .. (bool and "Activated" or "Deactivated"),
+        Name = "Anti-AFK",
+        Content = "Anti-AFK is now " .. (bool and "Enabled" or "Disabled"),
         Image = "rbxassetid://4483345998",
         Time = 3
     })
 end)
 
--- Main loop for auto-shake, auto-cast, and anti-afk
-local shakeInterval = 0
-local lastCast = 0
-local lastReel = 0
-
-run_service.Heartbeat:Connect(function()
-    -- Handle auto-shake
-    if config.autoShakeEnabled then
-        if tick() - shakeInterval >= config.shakeSpeed then
-            shake()
-            shakeInterval = tick()
-        end
-    end
-
-    -- Handle auto-cast
-    if config.autoCastEnabled then
-        if tick() - lastCast >= 0.5 then -- Launch a new cast every 0.5 seconds
-            autoCast()
-            lastCast = tick()
-        end
-    end
-
-    -- Handle auto-reel (Blatant)
-    if config.autoReelEnabled then
-        if tick() - lastReel >= 1 then -- Check every 1s for reel
-            autoReel()
-            lastReel = tick()
-        end
-    end
-
-    -- Handle Anti-AFK
+-- Anti-AFK feature
+run_service.RenderStepped:Connect(function()
     if config.antiAfkEnabled then
-        vim:SendMouseMove(0, 0) -- Simulate mouse movement to prevent AFK
+        bb:ClickButton()
+    end
+end)
+
+-- Main loop for Auto-Cast, Auto-Reel, and Auto-Shake
+run_service.Heartbeat:Connect(function()
+    if config.autoCastEnabled then
+        autoCast()
+    end
+
+    if config.autoReelEnabled then
+        autoReel()
+    end
+
+    if config.autoShakeEnabled then
+        shake()
     end
 end)
