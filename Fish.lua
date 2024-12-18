@@ -124,35 +124,41 @@ end
 
 -- Add Toggle for Auto-Shake
 autos:Toggle("Auto-Shake", false, function(bool)
-    config.autoShakeEnabled = bool
-    OrionLib:MakeNotification({
-        Name = "Auto-Shake",
-        Content = "Auto-Shake is now " .. (bool and "Enabled" or "Disabled"),
-        Image = "rbxassetid://4483345998",
-        Time = 3
-    })
+    if config.autoShakeEnabled ~= bool then
+        config.autoShakeEnabled = bool
+        OrionLib:MakeNotification({
+            Name = "Auto-Shake",
+            Content = "Auto-Shake is now " .. (bool and "Enabled" or "Disabled"),
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+    end
 end)
 
 -- Add Toggle for Auto-Cast
 autos:Toggle("Auto-Cast", false, function(bool)
-    config.autoCastEnabled = bool
-    OrionLib:MakeNotification({
-        Name = "Auto-Cast",
-        Content = "Auto-Cast is now " .. (bool and "Enabled" or "Disabled"),
-        Image = "rbxassetid://4483345998",
-        Time = 3
-    })
+    if config.autoCastEnabled ~= bool then
+        config.autoCastEnabled = bool
+        OrionLib:MakeNotification({
+            Name = "Auto-Cast",
+            Content = "Auto-Cast is now " .. (bool and "Enabled" or "Disabled"),
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+    end
 end)
 
 -- Add Toggle for Auto-Reel (Blatant)
 autos:Toggle("Auto-Reel (Blatant)", false, function(bool)
-    config.autoReelEnabled = bool
-    OrionLib:MakeNotification({
-        Name = "Auto-Reel (Blatant)",
-        Content = "Auto-Reel (Blatant) is now " .. (bool and "Enabled" or "Disabled"),
-        Image = "rbxassetid://4483345998",
-        Time = 3
-    })
+    if config.autoReelEnabled ~= bool then
+        config.autoReelEnabled = bool
+        OrionLib:MakeNotification({
+            Name = "Auto-Reel (Blatant)",
+            Content = "Auto-Reel (Blatant) is now " .. (bool and "Enabled" or "Disabled"),
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+    end
 end)
 
 -- Add Teleport Dropdown and Button
@@ -237,49 +243,17 @@ other:Toggle("Anti-AFK", false, function(bool)
 end)
 
 -- Anti-AFK feature and main loop for Auto functionalities
-local previousAutoShakeState, previousAutoCastState, previousAutoReelState = config.autoShakeEnabled, config.autoCastEnabled, config.autoReelEnabled
-
 run_service.RenderStepped:Connect(function()
     if config.antiAfkEnabled then
         bb:ClickButton()
-    end
-
-    if config.autoCastEnabled ~= previousAutoCastState then
-        OrionLib:MakeNotification({
-            Name = "Auto-Cast",
-            Content = "Auto-Cast is now " .. (config.autoCastEnabled and "Enabled" or "Disabled"),
-            Image = "rbxassetid://4483345998",
-            Time = 3
-        })
-        previousAutoCastState = config.autoCastEnabled
     end
 
     if config.autoCastEnabled then
         autoCast()
     end
 
-    if config.autoReelEnabled ~= previousAutoReelState then
-        OrionLib:MakeNotification({
-            Name = "Auto-Reel",
-            Content = "Auto-Reel is now " .. (config.autoReelEnabled and "Enabled" or "Disabled"),
-            Image = "rbxassetid://4483345998",
-            Time = 3
-        })
-        previousAutoReelState = config.autoReelEnabled
-    end
-
     if config.autoReelEnabled then
         autoReel()
-    end
-
-    if config.autoShakeEnabled ~= previousAutoShakeState then
-        OrionLib:MakeNotification({
-            Name = "Auto-Shake",
-            Content = "Auto-Shake is now " .. (config.autoShakeEnabled and "Enabled" or "Disabled"),
-            Image = "rbxassetid://4483345998",
-            Time = 3
-        })
-        previousAutoShakeState = config.autoShakeEnabled
     end
 
     if config.autoShakeEnabled then
@@ -401,8 +375,10 @@ end
 userInput.InputChanged:Connect(onMove)
 
 -- Add Toggle for Flying
+print("Initializing Fly button...")
 flyChannel:Toggle("Fly", false, function(bool)
     toggleFly(bool)
+    print("Fly toggle state: " .. tostring(bool))
     OrionLib:MakeNotification({
         Name = "Fly",
         Content = "Flying is now " .. (bool and "Enabled" or "Disabled"),
@@ -410,3 +386,4 @@ flyChannel:Toggle("Fly", false, function(bool)
         Time = 3
     })
 end)
+print("Fly button initialized successfully.")
