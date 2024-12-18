@@ -379,9 +379,50 @@ flyChannel:Toggle("Fly", false, function(bool)
     })
 end)
 
+-- Function to freeze the player
+local function freezePlayer(player)
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 0
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Parent = character.PrimaryPart
+            
+            return bodyVelocity
+        end
+    end
+end
+
+-- Function to unfreeze the player
+local function unfreezePlayer(player)
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16 -- Default WalkSpeed
+            humanoid.JumpPower = 50 -- Default JumpPower
+            
+            if character.PrimaryPart:FindFirstChildOfClass("BodyVelocity") then
+                character.PrimaryPart:FindFirstChildOfClass("BodyVelocity"):Destroy()
+            end
+        end
+    end
+end
+
 -- Add new toggle button to the Character channel
 flyChannel:Toggle("Freeze Character", false, function(bool)
     config.freezeCharacterEnabled = bool
+    if bool then
+        config.freezeBodyVelocity = freezePlayer(localplayer)
+    else
+        unfreezePlayer(localplayer)
+        config.freezeBodyVelocity = nil
+    end
     OrionLib:MakeNotification({
         Name = "Freeze Character",
         Content = "Freeze Character is now " .. (bool and "Enabled" or "Disabled"),
