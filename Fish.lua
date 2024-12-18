@@ -3,22 +3,22 @@ local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shle
 
 local win = DiscordLib:Window("Skibidi Tom")
 
--- Main Functions Channel (formerly Fishing Controls)
+-- Main Functions Channel
 local mainFunctions = win:Server("Main Functions", "http://www.roblox.com/asset/?id=6031075938")
 
--- Autos Channel inside Main Functions (formerly Fishing Controls)
+-- Autos Channel inside Main Functions
 local autos = mainFunctions:Channel("Autos")
 
--- Miscellaneous Channel (formerly Main)
+-- Miscellaneous Channel
 local miscellaneous = win:Server("Miscellaneous", "")
 
 -- Other Channel inside Miscellaneous
 local other = miscellaneous:Channel("Other")
 
--- Teleport Channel inside Miscellaneous (formerly Main)
+-- Teleport Channel inside Miscellaneous
 local teleport = miscellaneous:Channel("Teleport")
 
--- NEW: Character Channel inside Miscellaneous
+-- Character Channel inside Miscellaneous
 local flyChannel = miscellaneous:Channel("Character")
 
 -- Configuration settings
@@ -27,7 +27,7 @@ local config = {
     autoShakeEnabled = false,
     autoCastEnabled = false,
     autoReelEnabled = false,
-    bigButtonScaleFactor = 2,
+    bigButtonScaleFactor = 5,
     antiAfkEnabled = false,
     flyEnabled = false
 }
@@ -39,7 +39,7 @@ local run_service = game:GetService("RunService")
 local replicated_storage = game:GetService("ReplicatedStorage")
 local localplayer = players.LocalPlayer
 local playergui = localplayer.PlayerGui
-local bb = game:service'VirtualUser'
+local vu = game:GetService("VirtualUser")
 
 -- Utility function to simulate a click
 local function simulateClick(x, y)
@@ -57,26 +57,30 @@ local function shake()
     local safezone = shake_ui:FindFirstChild("safezone")
     local button = safezone and safezone:FindFirstChild("button")
 
-    if button then
-        -- Scale the button
+    if button and button.Visible then
+        -- Scale the button to make it bigger
         if config.bigButtonScaleFactor then
             button.Size = UDim2.new(config.bigButtonScaleFactor, 0, config.bigButtonScaleFactor, 0)
         else
-            button.Size = UDim2.new(1, 0, 1, 0) -- Default size
+            button.Size = UDim2.new(1, 0, 1, 0)
         end
 
         -- Simulate click to shake the button
-        if button.Visible then
-            simulateClick(
-                button.AbsolutePosition.X + button.AbsoluteSize.X / 2,
-                button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
-            )
-        end
+        simulateClick(
+            button.AbsolutePosition.X + button.AbsoluteSize.X / 2,
+            button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+        )
     end
 end
 
--- Optimized Auto-Cast Function with Rod Selection
+-- Optimized Auto-Cast Function with Rod Selection and Check
 local function autoCast()
+    -- Check if player is already fishing
+    local fishingUI = playergui:FindFirstChild("FishingUI")
+    if fishingUI and fishingUI:FindFirstChild("CastButton") and not fishingUI.CastButton.Visible then
+        return
+    end
+
     local rodNames = {
         "Rod Of The Depths", "Flimsy Rod", "Training Rod", "Relic Rod", "Astral Rod",
         "Destiny Rod", "Steady Rod", "Aurora Rod", "Rod Of The Forgotten Fang",
@@ -89,31 +93,27 @@ local function autoCast()
         "Phoenix Rod", "Stone Rod"
     }
 
-    local args = {97.4, 1} -- Cast distance and force
+    local args = {97.4, 1}
     local character = localplayer.Character
     local rodMap = {}
 
-    -- Create a lookup table for rods in the character
     for _, rod in ipairs(character:GetChildren()) do
         if table.find(rodNames, rod.Name) then
             rodMap[rod.Name] = rod
         end
     end
 
-    -- Find the first available rod and cast it
     for _, rodName in ipairs(rodNames) do
         local rod = rodMap[rodName]
         if rod then
             if rod:FindFirstChild("events") and rod.events:FindFirstChild("cast") then
-                -- Fire the cast event
                 rod.events.cast:FireServer(unpack(args))
-                return -- Exit after casting
+                return
             end
         end
     end
 end
 
--- Function for Auto-Reel
 local function autoReel()
     local args = {
         [1] = 100,
@@ -122,7 +122,6 @@ local function autoReel()
     replicated_storage:WaitForChild("events"):WaitForChild("reelfinished"):FireServer(unpack(args))
 end
 
--- Add Toggle for Auto-Shake
 autos:Toggle("Auto-Shake", false, function(bool)
     if config.autoShakeEnabled ~= bool then
         config.autoShakeEnabled = bool
@@ -135,7 +134,6 @@ autos:Toggle("Auto-Shake", false, function(bool)
     end
 end)
 
--- Add Toggle for Auto-Cast
 autos:Toggle("Auto-Cast", false, function(bool)
     if config.autoCastEnabled ~= bool then
         config.autoCastEnabled = bool
@@ -148,7 +146,6 @@ autos:Toggle("Auto-Cast", false, function(bool)
     end
 end)
 
--- Add Toggle for Auto-Reel (Blatant)
 autos:Toggle("Auto-Reel (Blatant)", false, function(bool)
     if config.autoReelEnabled ~= bool then
         config.autoReelEnabled = bool
@@ -161,8 +158,7 @@ autos:Toggle("Auto-Reel (Blatant)", false, function(bool)
     end
 end)
 
--- Add Teleport Dropdown and Button
-local selectedLocation = "Moosewood"  -- Default teleport location
+local selectedLocation = "Moosewood"
 
 teleport:Dropdown("Select Teleport Location", {"Ancient Archive", "Ancient Isle", "Brine Pool", "Desolate Deep", "Forsaken Shore", "Keeper Altar", "Moosewood", "Mushgrove", "Roslit", "Roslit Volcano", "Snowcap Island", "Sunstone", "Terrapin", "The Depth", "Vertigo"}, function(selected)
     selectedLocation = selected
@@ -206,14 +202,11 @@ teleport:Button("Teleport", function()
     end
 end)
 
--- Add Infinite Yield Button in "Other" category
 other:Button("Infinite Yield", function()
-    -- Execute the Infinite Yield script when the button is pressed
     local success, err = pcall(function()
         loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source', true))()
     end)
     
-    -- Handle potential errors
     if not success then
         OrionLib:MakeNotification({
             Name = "Error",
@@ -231,7 +224,6 @@ other:Button("Infinite Yield", function()
     end
 end)
 
--- Add Toggle for Anti-AFK in "Other" category
 other:Toggle("Anti-AFK", false, function(bool)
     config.antiAfkEnabled = bool
     OrionLib:MakeNotification({
@@ -245,7 +237,8 @@ end)
 -- Anti-AFK feature and main loop for Auto functionalities
 run_service.RenderStepped:Connect(function()
     if config.antiAfkEnabled then
-        bb:ClickButton()
+        vu:CaptureController()
+        vu:ClickButton2(Vector2.new())
     end
 
     if config.autoCastEnabled then
@@ -375,10 +368,8 @@ end
 userInput.InputChanged:Connect(onMove)
 
 -- Add Toggle for Flying
-print("Initializing Fly button...")
 flyChannel:Toggle("Fly", false, function(bool)
     toggleFly(bool)
-    print("Fly toggle state: " .. tostring(bool))
     OrionLib:MakeNotification({
         Name = "Fly",
         Content = "Flying is now " .. (bool and "Enabled" or "Disabled"),
@@ -386,4 +377,3 @@ flyChannel:Toggle("Fly", false, function(bool)
         Time = 3
     })
 end)
-print("Fly button initialized successfully.")
