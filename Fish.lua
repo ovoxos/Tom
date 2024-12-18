@@ -21,9 +21,6 @@ local teleport = miscellaneous:Channel("Teleport")
 -- NEW: Character Channel inside Miscellaneous
 local flyChannel = miscellaneous:Channel("Character")
 
--- Debug log for channel initialization
-print("Channels initialized successfully.")
-
 -- Configuration settings
 local config = {
     shakeSpeed = 0.1,
@@ -54,7 +51,6 @@ end
 local function shake()
     local shake_ui = playergui:FindFirstChild("shakeui")
     if not shake_ui then
-        print("Shake UI not found!")
         return
     end
 
@@ -76,8 +72,6 @@ local function shake()
                 button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
             )
         end
-    else
-        print("Shake button not found!")
     end
 end
 
@@ -113,16 +107,10 @@ local function autoCast()
             if rod:FindFirstChild("events") and rod.events:FindFirstChild("cast") then
                 -- Fire the cast event
                 rod.events.cast:FireServer(unpack(args))
-                print("Casting with rod: " .. rod.Name)
                 return -- Exit after casting
-            else
-                warn("Rod found, but no valid 'events.cast' detected!")
-                return -- Exit if there's an issue with this rod
             end
         end
     end
-
-    warn("No rod found in the character!")
 end
 
 -- Function for Auto-Reel
@@ -132,7 +120,6 @@ local function autoReel()
         [2] = true
     }
     replicated_storage:WaitForChild("events"):WaitForChild("reelfinished"):FireServer(unpack(args))
-    print("Reeling in!")
 end
 
 -- Add Toggle for Auto-Shake
@@ -249,24 +236,55 @@ other:Toggle("Anti-AFK", false, function(bool)
     })
 end)
 
--- Anti-AFK feature and main loop for Auto functionalities 
+-- Anti-AFK feature and main loop for Auto functionalities
+local previousAutoShakeState, previousAutoCastState, previousAutoReelState = config.autoShakeEnabled, config.autoCastEnabled, config.autoReelEnabled
+
 run_service.RenderStepped:Connect(function()
     if config.antiAfkEnabled then
         bb:ClickButton()
+    end
+
+    if config.autoCastEnabled ~= previousAutoCastState then
+        OrionLib:MakeNotification({
+            Name = "Auto-Cast",
+            Content = "Auto-Cast is now " .. (config.autoCastEnabled and "Enabled" or "Disabled"),
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+        previousAutoCastState = config.autoCastEnabled
     end
 
     if config.autoCastEnabled then
         autoCast()
     end
 
+    if config.autoReelEnabled ~= previousAutoReelState then
+        OrionLib:MakeNotification({
+            Name = "Auto-Reel",
+            Content = "Auto-Reel is now " .. (config.autoReelEnabled and "Enabled" or "Disabled"),
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+        previousAutoReelState = config.autoReelEnabled
+    end
+
     if config.autoReelEnabled then
         autoReel()
+    end
+
+    if config.autoShakeEnabled ~= previousAutoShakeState then
+        OrionLib:MakeNotification({
+            Name = "Auto-Shake",
+            Content = "Auto-Shake is now " .. (config.autoShakeEnabled and "Enabled" or "Disabled"),
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+        previousAutoShakeState = config.autoShakeEnabled
     end
 
     if config.autoShakeEnabled then
         shake()
     end
-
 end)
 
 -- Flying Variables
@@ -383,10 +401,8 @@ end
 userInput.InputChanged:Connect(onMove)
 
 -- Add Toggle for Flying
-print("Initializing Fly button...")
 flyChannel:Toggle("Fly", false, function(bool)
     toggleFly(bool)
-    print("Fly toggle state: " .. tostring(bool))
     OrionLib:MakeNotification({
         Name = "Fly",
         Content = "Flying is now " .. (bool and "Enabled" or "Disabled"),
@@ -394,4 +410,3 @@ flyChannel:Toggle("Fly", false, function(bool)
         Time = 3
     })
 end)
-print("Fly button initialized successfully.")
