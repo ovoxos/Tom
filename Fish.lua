@@ -29,7 +29,8 @@ local config = {
     autoReelEnabled = false,
     bigButtonScaleFactor = 5,
     antiAfkEnabled = false,
-    flyEnabled = false
+    flyEnabled = false,
+    freezeCharacterEnabled = false -- New feature toggle state
 }
 
 -- Services
@@ -373,6 +374,17 @@ flyChannel:Toggle("Fly", false, function(bool)
     OrionLib:MakeNotification({
         Name = "Fly",
         Content = "Flying is now " .. (bool and "Enabled" or "Disabled"),
+        Image = "rbxassetid://4483345998",
+        Time = 3
+    })
+end)
+
+-- Add new toggle button to the Character channel
+flyChannel:Toggle("Freeze Character", false, function(bool)
+    config.freezeCharacterEnabled = bool
+    OrionLib:MakeNotification({
+        Name = "Freeze Character",
+        Content = "Freeze Character is now " .. (bool and "Enabled" or "Disabled"),
         Image = "rbxassetid://4483345998",
         Time = 3
     })
